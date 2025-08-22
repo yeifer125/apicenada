@@ -17,7 +17,7 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ---------------- Instalar Playwright y navegador Chromium ----------------
+# ---------------- Instalar Playwright y Chromium ----------------
 RUN pip install --no-cache-dir playwright
 RUN playwright install chromium
 

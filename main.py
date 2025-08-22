@@ -56,7 +56,7 @@ async def descargar_archivo(context, url, nombre):
         return ruta_archivo
     return None
 
-# ---------------- Función para extraer productos ----------------
+# ---------------- Función corregida para extraer productos ----------------
 def extraer_todo_pdf(ruta_pdf):
     resultados = []
     fecha = ""
@@ -73,9 +73,10 @@ def extraer_todo_pdf(ruta_pdf):
                         fecha = parts[1].strip()
 
                 columnas = linea.split()
-                if len(columnas) < 6:  # producto + unidad + mayorista + 4 valores
+                if len(columnas) < 5:  # mínimo producto + mayorista + 4 valores
                     continue
 
+                # Últimos 4 elementos → valores numéricos
                 valores = columnas[-4:]
                 try:
                     minimo = float(valores[0].replace(",", ""))
@@ -85,9 +86,12 @@ def extraer_todo_pdf(ruta_pdf):
                 except ValueError:
                     continue
 
-                unidad = columnas[-5]
-                mayorista = columnas[-6]
-                prod_nombre = " ".join(columnas[:-6])
+                # Columna anterior → mayorista
+                mayorista = columnas[-5]
+
+                # Todo lo que queda al inicio → nombre del producto
+                prod_nombre = " ".join(columnas[:-5])
+                unidad = mayorista
 
                 if not prod_nombre.strip() or prod_nombre.lower().startswith("producto"):
                     continue
@@ -118,7 +122,7 @@ def parse_fecha(fecha_str):
 async def main_scraping():
     rutas_pdfs = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
         context = await browser.new_context()
         page = await context.new_page()
         await page.goto("https://www.pima.go.cr/boletin/", wait_until="networkidle")
@@ -161,18 +165,25 @@ def tarea_periodica():
         except Exception as e:
             print(f"[ERROR] Falló la actualización periódica: {e}")
         finally:
-            time.sleep(30 * 60)  # cada 30 minutos
+            time.sleep(30 * 60)
 
 # ---------------- API Flask ----------------
 app = Flask(__name__)
 
+def obtener_ip_real():
+    return request.headers.get("X-Forwarded-For", request.remote_addr)
+
 @app.route("/")
 def index():
+    ip_cliente = obtener_ip_real()
+    print(f"[LOG] / accedido desde IP: {ip_cliente}")
     return "API PIMA funcionando. Usa /precios para ver los datos."
 
 @app.route("/precios", methods=["GET"])
 def obtener_precios():
-    print(f"[LOG] /precios accedido desde IP: {request.remote_addr}")
+    ip_cliente = obtener_ip_real()
+    print(f"[LOG] /precios accedido desde IP: {ip_cliente}")
+
     if os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             datos = json.load(f)
@@ -182,7 +193,9 @@ def obtener_precios():
 
 @app.route("/actualizar", methods=["GET"])
 def actualizar():
-    print(f"[LOG] /actualizar accedido desde IP: {request.remote_addr}")
+    ip_cliente = obtener_ip_real()
+    print(f"[LOG] /actualizar accedido desde IP: {ip_cliente}")
+
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -202,6 +215,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[ERROR] Falló la actualización inicial: {e}")
 
-    # Hilo de actualización automática cada 30 minutos
+    # Hilo para actualizar scraper cada 30 minutos
     threading.Thread(target=tarea_periodica, daemon=True).start()
+    
+    # Ejecutar Flask en todas las interfaces, con puerto dinámico de Render
     app.run(host="0.0.0.0", port=port)
