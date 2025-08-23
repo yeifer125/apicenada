@@ -1,11 +1,11 @@
 # Web framework
-flask==3.0.3
+flask
 
 # Scraping con navegador
-playwright==1.47.0
+playwright
 
 # Manejo de PDFs
-pdfplumber==0.11.4
+pdfplumber
 
 # Pillow es dependiente de pdfplumber
-pillow==10.4.0
+pillow

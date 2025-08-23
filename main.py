@@ -77,7 +77,7 @@ def extraer_todo_pdf(ruta_pdf):
                         fecha = parts[1].strip()
 
                 columnas = linea.split()
-                if len(columnas) < 5:  
+                if len(columnas) < 5:
                     continue
 
                 valores = columnas[-4:]
@@ -121,8 +121,10 @@ def parse_fecha(fecha_str):
 async def main_scraping():
     rutas_pdfs = []
     async with async_playwright() as p:
+        # 🔹 Emulación de móvil (iPhone 14)
+        iphone = p.devices["iPhone 14"]
         browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
-        context = await browser.new_context()
+        context = await browser.new_context(**iphone)
         page = await context.new_page()
         await page.goto("https://www.pima.go.cr/boletin/", wait_until="networkidle")
         await auto_scroll(page)
