@@ -7,9 +7,5 @@ playwright==1.47.0
 # Manejo de PDFs
 pdfplumber==0.11.4
 
-# Dependencias internas de pdfplumber/pdfminer
+# Pillow es dependiente de pdfplumber
 pillow==10.4.0
-pdfminer.six==20240706
-
-# Utilidades extra (si quieres JSON más ordenado y manipulación de fechas)
-# Puedes quitarlos si no los necesitas

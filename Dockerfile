@@ -1,4 +1,4 @@
-# ---------- Imagen base con Python ----------
+# ---------- Imagen base ----------
 FROM python:3.10-slim
 
 # ---------- Variables de entorno ----------
@@ -31,8 +31,13 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------- Instalar dependencias Python ----------
+# ---------- Establecer directorio de trabajo ----------
 WORKDIR /app
+
+# ---------- Actualizar pip ----------
+RUN pip install --upgrade pip
+
+# ---------- Instalar dependencias Python ----------
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
