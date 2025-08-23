@@ -1,31 +1,48 @@
-# Base Python 3.11 slim
-FROM python:3.11-slim
+# ---------- Imagen base con Python ----------
+FROM python:3.10-slim
 
-# ---------------- Dependencias del sistema para Chromium ----------------
+# ---------- Variables de entorno ----------
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# ---------- Instalar dependencias del sistema ----------
 RUN apt-get update && apt-get install -y \
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
-    libgbm1 libasound2 libpangocairo-1.0-0 libpango-1.0-0 libx11-xcb1 \
-    libxfixes3 libxrender1 libxext6 libx11-6 libxi6 \
-    wget curl ca-certificates fonts-liberation \
+    wget \
+    curl \
+    unzip \
+    fonts-liberation \
+    libasound2 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnss3 \
+    libnspr4 \
+    libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------- Directorio de trabajo ----------------
+# ---------- Instalar dependencias Python ----------
 WORKDIR /app
-
-# ---------------- Copiar requirements e instalar dependencias Python ----------------
-COPY requirements.txt /app/
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ---------------- Instalar Playwright y Chromium ----------------
-RUN pip install --no-cache-dir playwright
-RUN playwright install chromium
+# ---------- Instalar navegadores Playwright ----------
+RUN python -m playwright install --with-deps chromium
 
-# ---------------- Copiar todo el código ----------------
-COPY . /app
+# ---------- Copiar código ----------
+COPY . .
 
-# ---------------- Exponer puerto Flask ----------------
+# ---------- Exponer puerto ----------
 EXPOSE 5000
 
-# ---------------- Ejecutar app ----------------
+# ---------- Comando de ejecución ----------
 CMD ["python", "main.py"]

@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: api-pima
+    env: docker
+    plan: free
+    autoDeploy: true
+    buildCommand: ""   # Render usará el Dockerfile directamente
+    startCommand: ""   # También lo toma del CMD del Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: "/ms-playwright"

@@ -51,12 +51,16 @@ async def descargar_archivo(context, url, nombre):
     response = await context.request.get(url)
     if response.status == 200:
         contenido = await response.body()
+        # 🔍 Validar si realmente es PDF
+        if not contenido.startswith(b"%PDF"):
+            print(f"[WARN] El archivo {url} no es un PDF válido, se ignora.")
+            return None
         with open(ruta_archivo, "wb") as f:
             f.write(contenido)
         return ruta_archivo
     return None
 
-# ---------------- Función corregida para extraer productos ----------------
+# ---------------- Función para extraer productos ----------------
 def extraer_todo_pdf(ruta_pdf):
     resultados = []
     fecha = ""
@@ -73,10 +77,9 @@ def extraer_todo_pdf(ruta_pdf):
                         fecha = parts[1].strip()
 
                 columnas = linea.split()
-                if len(columnas) < 5:  # mínimo producto + mayorista + 4 valores
+                if len(columnas) < 5:  
                     continue
 
-                # Últimos 4 elementos → valores numéricos
                 valores = columnas[-4:]
                 try:
                     minimo = float(valores[0].replace(",", ""))
@@ -86,10 +89,7 @@ def extraer_todo_pdf(ruta_pdf):
                 except ValueError:
                     continue
 
-                # Columna anterior → mayorista
                 mayorista = columnas[-5]
-
-                # Todo lo que queda al inicio → nombre del producto
                 prod_nombre = " ".join(columnas[:-5])
                 unidad = mayorista
 
@@ -111,7 +111,6 @@ def extraer_todo_pdf(ruta_pdf):
                 ]))
     return resultados
 
-# ---------------- Corregir orden por fecha ----------------
 def parse_fecha(fecha_str):
     try:
         return datetime.strptime(fecha_str, "%d/%m/%Y")
@@ -145,15 +144,18 @@ async def main_scraping():
 
     todos_resultados = []
     for pdf_path in rutas_pdfs:
-        resultados = extraer_todo_pdf(pdf_path)
-        todos_resultados.extend(resultados)
+        try:
+            resultados = extraer_todo_pdf(pdf_path)
+            todos_resultados.extend(resultados)
+        except Exception as e:
+            print(f"[ERROR] No se pudo procesar {pdf_path}: {e}")
 
     todos_resultados.sort(key=lambda x: parse_fecha(x["fecha"]), reverse=True)
 
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(todos_resultados, f, ensure_ascii=False, indent=2)
 
-    print(f"[{datetime.now()}] ✅ Scraper ejecutado. Datos actualizados: {len(todos_resultados)} productos guardados en '{CACHE_FILE}'.")
+    print(f"[{datetime.now()}] ✅ Scraper ejecutado. {len(todos_resultados)} productos guardados en '{CACHE_FILE}'.")
 
 # ---------------- Tarea periódica cada 30m ----------------
 def tarea_periodica():
@@ -208,15 +210,11 @@ def actualizar():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
 
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(main_scraping())
-    except Exception as e:
-        print(f"[ERROR] Falló la actualización inicial: {e}")
+    # 🚀 Lanzar scraping inicial en segundo plano (no bloquea Render)
+    threading.Thread(target=lambda: asyncio.run(main_scraping()), daemon=True).start()
 
-    # Hilo para actualizar scraper cada 30 minutos
+    # 🚀 Hilo para actualizar scraper cada 30 minutos
     threading.Thread(target=tarea_periodica, daemon=True).start()
-    
-    # Ejecutar Flask en todas las interfaces, con puerto dinámico de Render
+
+    # Ejecutar Flask
     app.run(host="0.0.0.0", port=port)
